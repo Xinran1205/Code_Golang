@@ -1,18 +1,22 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"math/rand"
+	"sort"
+)
 
 func main() {
 	TestNormalBS()
 }
 
 func TestNormalBS() {
-	a := make([]int, 10)
-	//rand.Seed(1)
+	a := make([]int, 100)
+	rand.Seed(1)
 	for i := range a {
-		a[i] = i
+		a[i] = rand.Intn(100)
 	}
-	b := NormalBS(a, 9)
-	fmt.Println(a)
+	sort.Ints(a)
+	b := NormalBS2(a, 9)
 	fmt.Println(b)
 }
