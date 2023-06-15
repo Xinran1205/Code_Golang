@@ -31,3 +31,18 @@ func NormalBS2(arr []int, v int) int {
 	}
 	return lo
 }
+
+// 递归二分
+func RecurBS(arr []int, lo int, hi int, v int) int {
+	if lo > hi {
+		return lo
+	}
+	mid := lo + (hi-lo)/2
+	if arr[mid] > v {
+		return RecurBS(arr, lo, mid-1, v)
+	} else if arr[mid] < v {
+		return RecurBS(arr, mid+1, hi, v)
+	} else {
+		return mid
+	}
+}
