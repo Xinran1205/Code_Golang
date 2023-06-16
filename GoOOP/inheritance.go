@@ -7,13 +7,13 @@ type Hero struct {
 	Age  string
 }
 
-type Human struct {
+type Son struct {
 	//这个就是继承的关键！
 	Hero //子类，继承了父类的属性和方法
 	Eat  int
 }
 
-func (human *Human) HelloSon() {
+func (son *Son) HelloSon() {
 	fmt.Println("This is son method")
 }
 
