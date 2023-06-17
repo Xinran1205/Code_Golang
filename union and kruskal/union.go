@@ -1,5 +1,9 @@
 package main
 
+import (
+	"container/list"
+)
+
 type node struct {
 	val  int
 	rank int
@@ -19,16 +23,15 @@ func createNodeArray(n int) nodeArray {
 
 // 需要维护一个栈
 func (NodeArray *nodeArray) find(a *node) *node {
-	stack := Stack{}
+	stack := &Stack{list: list.New()}
 	for a.next != a {
-		stack.Push(*a)
+		stack.Push(a)
 		a = a.next
 	}
 	//此时a是所在集合的根节点
 	//下面让这个一条链上面的所有节点直接挂在这个根节点上面
-	for !stack.IsEmpty() {
-		t := stack.Pop()
-		t.next = a
+	for n := stack.Pop(); n != nil; n = stack.Pop() {
+		n.next = a
 	}
 	return a
 }
@@ -56,36 +59,21 @@ func (NodeArray *nodeArray) isConnected(a *node, b *node) bool {
 	}
 }
 
-type Stack []node
+// 这个栈要非常注意，可把我写累死了，
+// 因为要注意栈里面存的是指针，因为我们需要修改node的next指针
+// 发现有next和prev，继而研究这个栈发现这个栈的底层实现是双向链表，
+// 这个双向链表是尾插法， 并且他有一个有哨兵节点，通过哨兵节点的pre可以找到最后一个节点然后开始插入操作
+type Stack struct {
+	list *list.List
+}
 
-func (s *Stack) Push(item node) {
-	*s = append(*s, item)
+func (s *Stack) Push(n *node) {
+	s.list.PushBack(n)
 }
 
 func (s *Stack) Pop() *node {
-	if len(*s) == 0 {
+	if s.list.Len() == 0 {
 		return nil
 	}
-	item := (*s)[len(*s)-1]
-	//在这个表达式中，*s 表示取出指针 s 所指向的切片对象，
-	//然后使用切片表达式 [:len(*s)-1] 获取该切片的一个子序列，
-	//包含从0开始到 len(*s)-1 结束（不包含 len(*s)-1）的元素。
-	*s = (*s)[:len(*s)-1]
-	return &item
+	return s.list.Remove(s.list.Back()).(*node)
 }
-
-func (s *Stack) IsEmpty() bool {
-	return len(*s) == 0
-}
-
-//这两个用不到
-//func (s *Stack) Peek() *node {
-//	if len(*s) == 0 {
-//		return nil
-//	}
-//	return &(*s)[len(*s)-1]
-//}
-
-//func (s *Stack) Len() int {
-//	return len(*s)
-//}
