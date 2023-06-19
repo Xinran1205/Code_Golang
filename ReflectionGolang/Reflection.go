@@ -5,6 +5,7 @@ import (
 	"reflect"
 )
 
+// 测试函数
 func main() {
 	//Go语言的变量是一个pair，pair中有两个值，type和value
 	//pair<type:, value:>
@@ -14,8 +15,16 @@ func main() {
 	//num := 10
 	//relectNum(num)
 
-	user := User{123, "wxr"}
-	DoFieldAndMethod(user)
+	//user := User{123, "wxr"}
+	//DoFieldAndMethod(user)
+
+	//测试结构体标签
+	//var a User2
+	//GetTag(&a)
+
+	//测试结构体标签转换成json 和 json转换成结构体
+	com := Computer{"apple", 123, []string{"王欣然", "乔布斯"}}
+	Convert(com)
 }
 
 // go语言反射包
