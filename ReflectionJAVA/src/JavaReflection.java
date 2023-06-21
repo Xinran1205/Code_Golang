@@ -6,11 +6,11 @@
  */
 
 //首先，反射是什么意思，java中的反射：能够分析类能力的程序称为反射
-//反射的功能，这两个用的比较常见，还有其他很多功能
+//反射的功能，这些比较常见，还有其他很多功能
 //1.在运行时分析类的能力，看ReflectionTest.java这个类
 //2.在运行时检查对象，例如，编写一个适用于所有类的toString方法 //这个没写，可以看书ObjectAnalyzer.java这个类
 //3.实现通用的数组操作代码（泛型数组）看CopyOfTest.java这个类
-//4.利用Method对象，这个对象很像C++中的函数指针，看MethodPointerTest.java这个类
+//4.利用Method对象，这个对象很像C++中的函数指针，看MethodTableTest.java这个类
 public class JavaReflection {
 
     public static void main(String[] args) {
