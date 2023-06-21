@@ -4,6 +4,6 @@ goroutine只有几kb内存占用和栈内存动态伸缩，所以可以轻松创
 
 结构图
 
-![结构图](/GORoutine.jpg "结构图")
+![结构图](GORoutine.jpg "结构图")
 
 
