@@ -5,7 +5,7 @@ goroutine只有几kb内存占用和栈内存动态伸缩，所以可以轻松创
 
 结构图： 
 
-![结构图](GORoutine.jpg "结构图"){:width="50%" height="50%"}
+<img src="GORoutine.jpg" width="50%" height="50%">
 
 全局队列是存放空闲的G，创建的G优先放在P的本地队列中，如果P都满了的话，放入全局队列 
 
