@@ -26,7 +26,7 @@ func main() {
 	go func(a int, b int) bool {
 		fmt.Println("a = ", a, "b = ", b)
 		return true
-	}(10, 20)
+	}(10, 20) //这个是函数的入参传值
 
 	//写个死循环防止main退出导致前面这个go func(){}()也退出了
 	for {
