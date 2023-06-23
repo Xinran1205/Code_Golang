@@ -1,4 +1,4 @@
-module GoProject
+module GoMODULES
 
 go 1.19
 
