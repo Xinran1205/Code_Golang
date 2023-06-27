@@ -31,6 +31,7 @@ int main(){
     {
         // 发送数据
         char buf[1024];
+        memset(buf, 0, sizeof(buf));
         sprintf(buf, "你好, 服务器...%d\n", number++);
         write(fd, buf, strlen(buf)+1);
         

@@ -33,7 +33,6 @@ int main(){
     // 这个宏可以代表任意一个IP地址
     // 这个宏一般用于本地的绑定操作
     addr.sin_addr.s_addr = INADDR_ANY; 
-    printf("INADDR_ANY = %d\n", INADDR_ANY);
     //这里用了强转
     int ret = bind(fd, (struct sockaddr*)&addr, sizeof(addr));
     if(ret == -1){
@@ -69,10 +68,8 @@ int main(){
         exit(0);
     }
 
-
     //5.连接建立成功，开始通信
     //先打印一下客户端信息
-
     //这是定义一个 char 类型的数组 ip，大小为 24 字节，并将数组中的每个元素都初始化为 0
     char ip[24] = {0};
     printf("客户端的IP地址: %s, 端口: %d\n",
@@ -81,6 +78,11 @@ int main(){
 
     while(1){
         char buf[1024];
+        //在 C 语言中，如果定义数组时没有为其赋初值，那么数组中的元素将会是未定义的（uninitialized），
+        //也就是说，其值是不确定的，可能是任何值（包括 0）。
+        //这些未初始化的值可能是之前存储在该内存位置上的值，也可能是随机的垃圾值。
+        //memset 函数对该数组进行了初始化，将其所有元素都设置为 0。
+        memset(buf, 0, sizeof(buf));
         //这里用read也可以
         int len = recv(com_fd, buf, sizeof(buf), 0);
         if(len > 0)
