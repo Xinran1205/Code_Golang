@@ -52,7 +52,7 @@ int main(){
             perror("read");
             break;
         }
-        sleep(2);   // 每隔1s发送一条数据
+        sleep(2);   // 每隔2s发送一条数据
     }
 
     close(fd);

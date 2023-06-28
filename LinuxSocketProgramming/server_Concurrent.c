@@ -89,6 +89,8 @@ int main(){
     return 0;
 }
 
+//void* 就是一个任意类型的指针，和void恰恰相反，void* 它并不是空，也不是什么都不返回，
+//而是可以返回一个任意类型的指针，这里需要谨记的有两个点，一就是任意类型，二是指针。
 void* worker(void* arg){
     struct SockInfo* pinfo = (struct SockInfo*)arg;
     char ip[24] = {0};
