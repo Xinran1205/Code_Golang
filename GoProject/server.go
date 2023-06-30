@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"net"
 	"sync"
 )
@@ -52,6 +53,22 @@ func (s *Server) Handler(conn net.Conn) {
 	//把当前用户上线消息广播给所有用户，其实真的广播是ListenMessage()这个函数做的
 	//这个只是把信息发给了服务器
 	s.BroadCast(user, "已上线")
+	go func() {
+		buf := make([]byte, 4096)
+		for {
+			n, err := conn.Read(buf)
+			if n == 0 {
+				s.BroadCast(user, "下线")
+				return
+			}
+			if err != nil && err != io.EOF {
+				fmt.Println("conn read err", err)
+				return
+			}
+			msg := string(buf[:n-1])
+			s.BroadCast(user, msg)
+		}
+	}()
 
 	//当前handler阻塞
 	//我认为这里确实需要阻塞，如果不阻塞，这个函数退出，那么创建的user对象也消失了，即使放进了map里面，也是空的
