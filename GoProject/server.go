@@ -49,7 +49,8 @@ func (s *Server) Handler(conn net.Conn) {
 	s.mapLock.Lock()
 	s.OnlineMap[user.Name] = user
 	s.mapLock.Unlock()
-	//把当前用户上线消息广播给所有用户
+	//把当前用户上线消息广播给所有用户，其实真的广播是ListenMessage()这个函数做的
+	//这个只是把信息发给了服务器
 	s.BroadCast(user, "已上线")
 
 	//当前handler阻塞
