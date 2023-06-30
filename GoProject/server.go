@@ -54,6 +54,7 @@ func (s *Server) Handler(conn net.Conn) {
 	s.BroadCast(user, "已上线")
 
 	//当前handler阻塞
+	//我认为这里确实需要阻塞，如果不阻塞，这个函数退出，那么创建的user对象也消失了，即使放进了map里面，也是空的
 	select {}
 }
 
