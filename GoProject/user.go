@@ -58,8 +58,24 @@ func (u *User) SendMsg(msg string) {
 			onlineMeg := "[" + user.Addr + "]" + user.Name + ":" + " is online..\n"
 			u.ToCurCli(onlineMeg)
 		}
+		u.s.mapLock.Unlock()
+	} else if len(msg) > 7 && msg[:7] == "rename " {
+		newName := msg[7:]
+		_, ok := u.s.OnlineMap[newName]
+		if ok {
+			u.ToCurCli("The name has been used\n")
+		} else {
+			u.s.mapLock.Lock()
+			delete(u.s.OnlineMap, u.Name)
+			//这里应该是只删除了map中的，但是user对象还是存在的
+			u.s.OnlineMap[newName] = u
+			u.Name = newName
+			u.ToCurCli("rename successful\n")
+			u.s.mapLock.Unlock()
+		}
+	} else {
+		u.s.BroadCast(u, msg)
 	}
-	u.s.BroadCast(u, msg)
 }
 
 // 监听当前user channel的方法，一旦有消息，就直接发送给对端客户端，注意是客户端，因为这个类还是属于服务器的部分
