@@ -25,7 +25,7 @@ func NewServer(ip string, port int) *Server {
 	return server
 }
 
-func (s *Server) ListenMessage() {
+func (s *Server) SevListenMessage() {
 	for {
 		msg := <-s.msg
 		//将msg发送给全部的在线用户
@@ -45,7 +45,7 @@ func (s *Server) BroadCast(user *User, msg string) {
 }
 
 func (s *Server) Handler(conn net.Conn) {
-	fmt.Println("链接建立成功")
+	fmt.Println("connection successful")
 	user := NewUser(conn, s)
 	// 当前链接的业务
 	//用户上线，将用户加入到onlineMap中
@@ -88,7 +88,7 @@ func (s *Server) Start() {
 	defer listner.Close()
 
 	//启动监听Message的goroutine
-	go s.ListenMessage()
+	go s.SevListenMessage()
 
 	for {
 		//服务器在调用accept函数时，会阻塞等待客户端的连接请求，一旦有客户端连接请求到达，
