@@ -5,6 +5,7 @@ import (
 	"io"
 	"net"
 	"sync"
+	"time"
 )
 
 type Server struct {
@@ -50,6 +51,7 @@ func (s *Server) Handler(conn net.Conn) {
 	// 当前链接的业务
 	//用户上线，将用户加入到onlineMap中
 	user.UserOnline()
+	isLive := make(chan bool)
 	go func() {
 		buf := make([]byte, 4096)
 		for {
@@ -64,13 +66,28 @@ func (s *Server) Handler(conn net.Conn) {
 			}
 			msg := string(buf[:n-1])
 			user.SendMsg(msg)
+			isLive <- true
 		}
 	}()
 
-	//当前handler阻塞,必须
-	//这个退出user不会死，但是局部user死了，但是因为已经加到map中了，map的value指向user地址，所以还是可以操作到
-	//目前看来好像不需要阻塞，因为里面有个go func创建了子go程，即使handler函数父go程退出了，子go程还是会继续执行
-	select {}
+	for {
+		//select中case先后顺序没有影响
+		select {
+		case <-isLive:
+			//当前用户是活跃的，应该重置定时器
+			//不做任何事情，为了激活select，使得select退出做for循环以至于重置下面的定时器
+
+		case <-time.After(time.Second * 15):
+			//超时处理
+			user.ToCurCli("你被踢了")
+			//销毁资源
+			close(user.C)
+			//关闭连接
+			conn.Close()
+
+			return
+		}
+	}
 }
 
 // 启动服务器
