@@ -37,6 +37,8 @@ func (s *Server) ListenMessage() {
 	}
 }
 
+// 把当前用户上线消息广播给所有用户，其实真的广播是ListenMessage()这个函数做的
+// 这个只是把信息发给了服务器
 func (s *Server) BroadCast(user *User, msg string) {
 	sendMsg := "[" + user.Addr + "]" + user.Name + ":" + msg
 	s.msg <- sendMsg
@@ -44,21 +46,16 @@ func (s *Server) BroadCast(user *User, msg string) {
 
 func (s *Server) Handler(conn net.Conn) {
 	fmt.Println("链接建立成功")
-	user := NewUser(conn)
+	user := NewUser(conn, s)
 	// 当前链接的业务
 	//用户上线，将用户加入到onlineMap中
-	s.mapLock.Lock()
-	s.OnlineMap[user.Name] = user
-	s.mapLock.Unlock()
-	//把当前用户上线消息广播给所有用户，其实真的广播是ListenMessage()这个函数做的
-	//这个只是把信息发给了服务器
-	s.BroadCast(user, "已上线")
+	user.UserOnline()
 	go func() {
 		buf := make([]byte, 4096)
 		for {
 			n, err := conn.Read(buf)
 			if n == 0 {
-				s.BroadCast(user, "下线")
+				user.UserOffline()
 				return
 			}
 			if err != nil && err != io.EOF {
@@ -66,12 +63,13 @@ func (s *Server) Handler(conn net.Conn) {
 				return
 			}
 			msg := string(buf[:n-1])
-			s.BroadCast(user, msg)
+			user.SendMsg(msg)
 		}
 	}()
 
-	//当前handler阻塞
-	//我认为这里确实需要阻塞，如果不阻塞，这个函数退出，那么创建的user对象也消失了，即使放进了map里面，也是空的
+	//当前handler阻塞,必须
+	//这个退出user不会死，但是局部user死了，但是因为已经加到map中了，map的value指向user地址，所以还是可以操作到
+	//目前看来好像不需要阻塞，因为里面有个go func创建了子go程，即使handler函数父go程退出了，子go程还是会继续执行
 	select {}
 }
 
