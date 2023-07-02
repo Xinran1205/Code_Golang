@@ -2,6 +2,7 @@ package main
 
 import (
 	"net"
+	"strings"
 )
 
 type User struct {
@@ -46,7 +47,7 @@ func (u *User) UserOffline() {
 	u.s.BroadCast(u, "offline")
 }
 
-// 把消息发给当前用户
+// 把消息发给调用它的用户的客户端
 func (u *User) ToCurCli(msg string) {
 	u.conn.Write([]byte(msg))
 }
@@ -73,6 +74,24 @@ func (u *User) SendMsg(msg string) {
 			u.ToCurCli("rename successful\n")
 			u.s.mapLock.Unlock()
 		}
+	} else if len(msg) > 4 && msg[:3] == "to " {
+		remoteName := strings.Split(msg, " ")[1]
+		if remoteName == "" {
+			u.ToCurCli("The format of the command is incorrect. format: to wxr hello\n")
+			return
+		}
+		remoteUser, ok := u.s.OnlineMap[remoteName]
+		if !ok {
+			u.ToCurCli("The user is not online\n")
+			return
+		}
+		content := strings.Split(msg, " ")[2]
+		if content == "" {
+			u.ToCurCli("The format of the command is incorrect. format: to wxr hello\n")
+			return
+		}
+		remoteUser.ToCurCli(u.Name + " say to you: " + content + "\n")
+
 	} else {
 		u.s.BroadCast(u, msg)
 	}

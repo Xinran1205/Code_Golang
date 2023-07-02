@@ -77,9 +77,9 @@ func (s *Server) Handler(conn net.Conn) {
 			//当前用户是活跃的，应该重置定时器
 			//不做任何事情，为了激活select，使得select退出做for循环以至于重置下面的定时器
 
-		case <-time.After(time.Second * 15):
+		case <-time.After(time.Second * 60):
 			//超时处理
-			user.ToCurCli("你被踢了")
+			user.ToCurCli("Time out")
 			//销毁资源
 			close(user.C)
 			//关闭连接
