@@ -45,6 +45,7 @@ void* consumer(void* arg){
         free(DelNode);
         pthread_mutex_unlock(&mutex);
     }
+    return NULL;
 }
 
 int main(){
