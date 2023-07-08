@@ -112,7 +112,7 @@ void* worker(void* arg){
         }
         if (pool->shutdown){
             pthread_mutex_unlock(&pool->mutexPool);
-            pthread_exit(NULL);
+            threadExit(pool);
         }
         //这里直接定义局部变量，因为处理完就甩了，不需要定义成指针，指针还要malloc内存
         Task task;
@@ -139,4 +139,15 @@ void* worker(void* arg){
         pthread_mutex_unlock(&pool->mutexBusy);
     }
     return NULL;
+}
+
+void threadExit(ThreadPool* pool){
+    pthread_t tid = pthread_self();
+    for(int i=0;i<pool->maxNum;i++){
+        if(pool->threadIDs[i]==tid){
+            pool->threadIDs[i]=0;
+            break;
+        }
+    }
+    pthread_exit(NULL);
 }
