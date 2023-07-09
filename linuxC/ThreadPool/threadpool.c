@@ -4,6 +4,8 @@
 #include <pthread.h>
 #include <string.h>
 
+//定义一个：当每次要销毁线程时，销毁的个数
+#define NUMBER 2
 
 // 线程池中的任务
 //线程池中的任务实际上可以理解为一串代码（函数），但是我们存储的是这串代码的地址（指针），然后线程池中的线程去执行这串代码
@@ -41,7 +43,7 @@ typedef struct ThreadPool
 //有一个注意的，pthread_create函数的第一个参数一个传出参数，是无符号长整形数，
 //线程创建成功，会将线程 ID 写入到这个指针指向的内存中，所以我们给他一个指针（指向一个地址）即可
 
-ThreadPool* ThreadPoolCreate(int minNum, int maxNum, int Capacity){
+ThreadPool* ThreadPoolCreate(int minNum, int maxNum, int queueCapacity){
     ThreadPool* pool = (ThreadPool*)malloc (sizeof(ThreadPool));
     do{
         if(pool ==NULL){
@@ -71,8 +73,8 @@ ThreadPool* ThreadPoolCreate(int minNum, int maxNum, int Capacity){
         }
 
         //接下来初始化线程池中的任务队列
-        pool->taskQ = (Task*)malloc(sizeof(Task)*Capacity);
-        pool->queueCapacity = Capacity;
+        pool->taskQ = (Task*)malloc(sizeof(Task)*queueCapacity);
+        pool->queueCapacity = queueCapacity;
         pool->queueSize = 0;
         pool->queueFront = 0;
         pool->queueRear = 0;
@@ -137,6 +139,60 @@ void* worker(void* arg){
         pthread_mutex_lock(&pool->mutexBusy);
         pool->busyNum--;
         pthread_mutex_unlock(&pool->mutexBusy);
+    }
+    return NULL;
+}
+
+void* manager(void* arg)
+{
+    ThreadPool* pool = (ThreadPool*)arg;
+    while (!pool->shutdown)
+    {
+        // 每隔3s检测一次
+        sleep(3);
+
+        // 取出线程池中任务的数量和当前线程的数量
+        pthread_mutex_lock(&pool->mutexPool);
+        int queueSize = pool->queueSize;
+        int liveNum = pool->liveNum;
+        pthread_mutex_unlock(&pool->mutexPool);
+
+        // 取出忙的线程的数量
+        pthread_mutex_lock(&pool->mutexBusy);
+        int busyNum = pool->busyNum;
+        pthread_mutex_unlock(&pool->mutexBusy);
+
+        // 添加线程
+        // 任务的个数>存活的线程个数 && 存活的线程数<最大线程数
+        if (queueSize > liveNum && liveNum < pool->maxNum)
+        {
+            pthread_mutex_lock(&pool->mutexPool);
+            int counter = 0;
+            for (int i = 0; i < pool->maxNum && counter < NUMBER
+                && pool->liveNum < pool->maxNum; ++i)
+            {
+                if (pool->threadIDs[i] == 0)
+                {
+                    pthread_create(&pool->threadIDs[i], NULL, worker, pool);
+                    counter++;
+                    pool->liveNum++;
+                }
+            }
+            pthread_mutex_unlock(&pool->mutexPool);
+        }
+        // 销毁线程
+        // 忙的线程*2 < 存活的线程数 && 存活的线程>最小线程数
+        if (busyNum * 2 < liveNum && liveNum > pool->minNum)
+        {
+            pthread_mutex_lock(&pool->mutexPool);
+            pool->exitNum = NUMBER;
+            pthread_mutex_unlock(&pool->mutexPool);
+            // 让工作的线程自杀
+            for (int i = 0; i < NUMBER; ++i)
+            {
+                pthread_cond_signal(&pool->notEmpty);
+            }
+        }
     }
     return NULL;
 }
