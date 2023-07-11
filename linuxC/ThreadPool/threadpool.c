@@ -3,8 +3,9 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <string.h>
+#include "threadpool.h"
 
-//定义一个：当每次要销毁线程时，销毁的个数
+//定义一个：当每次要销毁（创建）线程时，销毁（创建）的个数
 #define NUMBER 2
 
 // 线程池中的任务
@@ -41,8 +42,13 @@ typedef struct ThreadPool
     int shutdown;           // 是不是要销毁线程池, 销毁为1, 不销毁为0
 }ThreadPool;
 
+//函数声明
+void* manager(void* arg);
+void* worker(void* arg);
+void threadExit(ThreadPool* pool);
 
-ThreadPool* ThreadPoolCreate(int minNum, int maxNum, int queueCapacity){
+
+ThreadPool* threadPoolCreate(int minNum, int maxNum, int queueCapacity){
     ThreadPool* pool = (ThreadPool*)malloc (sizeof(ThreadPool));
     do{
         if(pool ==NULL){
@@ -109,30 +115,47 @@ ThreadPool* ThreadPoolCreate(int minNum, int maxNum, int queueCapacity){
     return NULL;
 }
 
+//工作线程（消费者）
 void* worker(void* arg){
     ThreadPool* pool = (ThreadPool*)arg;
     while(1){
         pthread_mutex_lock(&pool->mutexPool);
         while(pool->queueSize==0&&!pool->shutdown){
             pthread_cond_wait(&pool->notEmpty,&pool->mutexPool);
+
+            // 判断是不是要销毁线程
+            if (pool->exitNum > 0)
+            {
+                //这里减减得写在if外面，因为无论如何我们都要减（即使实际上没有销毁）
+                //因为有最少线程数限制
+                pool->exitNum--;
+                if (pool->liveNum > pool->minNum)
+                {
+                    pool->liveNum--;
+                    pthread_mutex_unlock(&pool->mutexPool);
+                    threadExit(pool);
+                }
+            }
         }
         if (pool->shutdown){
             pthread_mutex_unlock(&pool->mutexPool);
             threadExit(pool);
         }
-        //这里直接定义局部变量，因为处理完就甩了，不需要定义成指针，指针还要malloc内存
+        //取出任务，这里直接定义局部变量，因为任务处理完就甩了，不需要定义成指针，指针还要malloc内存
         Task task;
         task.function = pool->taskQ[pool->queueFront].function;
         task.arg = pool->taskQ[pool->queueFront].arg;
-
+        //头指针后移，任务总数减1
         pool->queueFront = (pool->queueFront+1)%pool->queueCapacity;
         pool->queueSize--;
+        pthread_cond_signal(&pool->notFull); //唤醒阻塞的生产者
         pthread_mutex_unlock(&pool->mutexPool);
 
         printf("thread %ld start working...\n", pthread_self());
         pthread_mutex_lock(&pool->mutexBusy);
         pool->busyNum++;
         pthread_mutex_unlock(&pool->mutexBusy);
+
         task.function(task.arg);
         //这里task.arg我们传入的时候要传入堆内存，因为栈不好保存，
         //所以如果传入堆内存，那用完当然要把free掉
@@ -172,6 +195,7 @@ void* manager(void* arg)
         {
             pthread_mutex_lock(&pool->mutexPool);
             int counter = 0;
+            //pool->liveNum < pool->maxNum这个条件判断很重要，防止多加了，以至于超过最大线程数
             for (int i = 0; i < pool->maxNum && counter < NUMBER
                 && pool->liveNum < pool->maxNum; ++i)
             {
@@ -212,4 +236,84 @@ void threadExit(ThreadPool* pool){
     }
     //只要调用该函数当前线程就马上退出了，并且不会影响到其他线程的正常运行，不管是在子线程或者主线程中都可以使用。
     pthread_exit(NULL);
+}
+
+
+int threadPoolDestroy(ThreadPool* pool)
+{
+    if (pool == NULL)
+    {
+        return -1;
+    }
+
+    // 关闭线程池
+    pool->shutdown = 1;
+    // 阻塞回收管理者线程
+    pthread_join(pool->managerID, NULL);
+    // 唤醒阻塞的消费者线程
+    for (int i = 0; i < pool->liveNum; ++i)
+    {
+        pthread_cond_signal(&pool->notEmpty);
+    }
+    // 释放堆内存
+    if (pool->taskQ)
+    {
+        free(pool->taskQ);
+    }
+    if (pool->threadIDs)
+    {
+        free(pool->threadIDs);
+    }
+
+    pthread_mutex_destroy(&pool->mutexPool);
+    pthread_mutex_destroy(&pool->mutexBusy);
+    pthread_cond_destroy(&pool->notEmpty);
+    pthread_cond_destroy(&pool->notFull);
+
+    free(pool);
+    pool = NULL;
+
+    return 0;
+}
+
+//这是生产者，这是一个对外的接口，我们用户调用这个函数
+void threadPoolAdd(ThreadPool* pool, void(*func)(void*), void* arg)
+{
+    pthread_mutex_lock(&pool->mutexPool);
+    while (pool->queueSize == pool->queueCapacity && !pool->shutdown)
+    {
+        // 阻塞生产者线程
+        pthread_cond_wait(&pool->notFull, &pool->mutexPool);
+    }
+    if (pool->shutdown)
+    {
+        pthread_mutex_unlock(&pool->mutexPool);
+        return;
+    }
+    // 添加任务
+    pool->taskQ[pool->queueRear].function = func;
+    pool->taskQ[pool->queueRear].arg = arg;
+    pool->queueRear = (pool->queueRear + 1) % pool->queueCapacity;
+    pool->queueSize++;
+
+    pthread_cond_signal(&pool->notEmpty);
+    pthread_mutex_unlock(&pool->mutexPool);
+}
+
+//下面这两个函数是对外的接口，没啥用
+
+int threadPoolBusyNum(ThreadPool* pool)
+{
+    pthread_mutex_lock(&pool->mutexBusy);
+    int busyNum = pool->busyNum;
+    pthread_mutex_unlock(&pool->mutexBusy);
+    return busyNum;
+}
+
+int threadPoolAliveNum(ThreadPool* pool)
+{
+    pthread_mutex_lock(&pool->mutexPool);
+    int aliveNum = pool->liveNum;
+    pthread_mutex_unlock(&pool->mutexPool);
+    return aliveNum;
 }
