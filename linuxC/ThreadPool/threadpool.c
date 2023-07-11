@@ -47,7 +47,6 @@ void* manager(void* arg);
 void* worker(void* arg);
 void threadExit(ThreadPool* pool);
 
-
 ThreadPool* threadPoolCreate(int minNum, int maxNum, int queueCapacity){
     ThreadPool* pool = (ThreadPool*)malloc (sizeof(ThreadPool));
     do{
@@ -158,7 +157,7 @@ void* worker(void* arg){
 
         task.function(task.arg);
         //这里task.arg我们传入的时候要传入堆内存，因为栈不好保存，
-        //所以如果传入堆内存，那用完当然要把free掉
+        //所以如果传入堆内存，那用完当然要把free掉,free完还要记得设置NULL，防止“野指针”
         free(task.arg);
         task.arg = NULL;
 

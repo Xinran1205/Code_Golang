@@ -37,6 +37,8 @@ void* consumer(void* arg){
         pthread_mutex_lock(&mutex);
         //head等于null说明没有资源
         while(head==NULL){
+            //这里假设多个线程阻塞在这里,当被broadcast，这些线程一起抢一个锁
+            //抢到锁的线程向下执行，这个向下执行其实就是再判断一次while条件，此时发现条件已不满足，会跳出循环向下执行
             pthread_cond_wait(&cond,&mutex);
         }
         struct Node* DelNode = head;

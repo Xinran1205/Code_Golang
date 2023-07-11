@@ -17,15 +17,16 @@ void taskFunc(void* arg)
 int main()
 {
     // 创建线程池
-    ThreadPool* pool = threadPoolCreate(3, 10, 100);
+    ThreadPool* pool = threadPoolCreate(5, 10, 100);
     for (int i = 0; i < 100; ++i)
     {
+        //这里任务函数的参数我们使用堆存储，栈内存不好保存
         int* num = (int*)malloc(sizeof(int));
         *num = i + 100;
         threadPoolAdd(pool, taskFunc, num);
     }
 
-    sleep(30);
+    sleep(10);
 
     threadPoolDestroy(pool);
     return 0;
