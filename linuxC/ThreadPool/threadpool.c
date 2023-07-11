@@ -29,7 +29,8 @@ typedef struct ThreadPool
     pthread_t *threadIDs;   // 工作的线程ID，因为有多个，所以用数组，threadIDs定义为指针，指向数组的首地址
     int minNum;             // 最小线程数量
     int maxNum;             // 最大线程数量
-    int busyNum;            // 忙的线程的个数，因为这个会被多个线程同时修改，所以需要加锁
+    int busyNum;            // 忙的线程的个数，因为这个会被多个线程同时修改，所以需要加锁，而且因为这个变量使用频繁，
+                            // 所以需要单独拿一个锁，不使用大的线程池锁,提升效率
     int liveNum;            // 存活的线程的个数 ，因为这个变量和下面的变量只是管理者进程（只有一个）修改，所以不需要加锁
     int exitNum;            // 要销毁的线程个数
     pthread_mutex_t mutexPool;  // 锁整个的线程池
@@ -40,8 +41,6 @@ typedef struct ThreadPool
     int shutdown;           // 是不是要销毁线程池, 销毁为1, 不销毁为0
 }ThreadPool;
 
-//有一个注意的，pthread_create函数的第一个参数一个传出参数，是无符号长整形数，
-//线程创建成功，会将线程 ID 写入到这个指针指向的内存中，所以我们给他一个指针（指向一个地址）即可
 
 ThreadPool* ThreadPoolCreate(int minNum, int maxNum, int queueCapacity){
     ThreadPool* pool = (ThreadPool*)malloc (sizeof(ThreadPool));
@@ -50,13 +49,7 @@ ThreadPool* ThreadPoolCreate(int minNum, int maxNum, int queueCapacity){
             printf("malloc threadpool fail\n");
             break;
         }
-        //这里初始化线程id是为了区分，后面创建线程会用到，可用的线程id为未知数，未初始化的为0，所以我们创建新线程是找到id为0的位置创建
-        pool->threadIDs = (pthread_t*)malloc(sizeof(pthread_t)*maxNum);
-        if(pool->threadIDs == NULL){
-            printf("malloc threadIDs fail\n");
-            break;
-        }
-        memset(pool->threadIDs,0,sizeof(pthread_t)*maxNum);
+        
         //初始化线程池的一些变量
         pool->minNum = minNum;
         pool->maxNum = maxNum;
@@ -79,7 +72,18 @@ ThreadPool* ThreadPoolCreate(int minNum, int maxNum, int queueCapacity){
         pool->queueFront = 0;
         pool->queueRear = 0;
 
-        //初始化创建线程
+        //因为pthread_create函数的第一个参数一个传出参数，是无符号长整形数，
+        //线程创建成功，会将线程 ID 写入到这个指针指向的内存中，所以我们给他一个指针（指向一个地址）即可
+        //这里初始化使得所有指针指向的内存地址数据都为0，这是为了区分,后面创建线程时，创建成功会写入线程id到指针指向的地址
+        //所以如果指针指向的值是未知数（一个线程id）就代表线程已经创建，如果是0代表线程未创建，所以我们创建新线程是找到id为0的位置创建
+        pool->threadIDs = (pthread_t*)malloc(sizeof(pthread_t)*maxNum);
+        if(pool->threadIDs == NULL){
+            printf("malloc threadIDs fail\n");
+            break;
+        }
+        memset(pool->threadIDs,0,sizeof(pthread_t)*maxNum);
+
+        //创建线程
         //创建管理者线程
         pthread_create(&pool->managerID,NULL,manager,pool);
         //创建工作线程
@@ -198,6 +202,7 @@ void* manager(void* arg)
 }
 
 void threadExit(ThreadPool* pool){
+    //这个作用主要是把指向的地址的值（线程id）改过来
     pthread_t tid = pthread_self();
     for(int i=0;i<pool->maxNum;i++){
         if(pool->threadIDs[i]==tid){
@@ -205,5 +210,6 @@ void threadExit(ThreadPool* pool){
             break;
         }
     }
+    //只要调用该函数当前线程就马上退出了，并且不会影响到其他线程的正常运行，不管是在子线程或者主线程中都可以使用。
     pthread_exit(NULL);
 }
