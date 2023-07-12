@@ -68,7 +68,8 @@ void* manager(void* arg){
         int busyNumber = pool->busyNumber;
         // pthread_mutex_unlock(&pool->poolLock);
 
-        if (liveNumber<taskNumber&&liveNumber<pool->maxT){
+        //这里创建线程的条件根据具体业务而定
+        if (liveNumber-busyNumber<taskNumber&&liveNumber<pool->maxT){
             int counter =0;
             for(int i=0;i<pool->maxT&&counter<Number&&pool->liveNumber<pool->maxT;i++){
                 if(pool->workerId[i]==0){
