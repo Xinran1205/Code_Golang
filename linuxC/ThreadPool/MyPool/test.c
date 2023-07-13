@@ -4,7 +4,6 @@
 #include <pthread.h>
 #include <string.h>
 #include "threadpool.h"
-// #include "threadpool.c"
 
 typedef struct argg{
     int num;
