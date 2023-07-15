@@ -6,5 +6,5 @@ type IServer interface {
 	// Stop server
 	StopServer()
 	// Run server
-	RunServe()
+	RunServer()
 }
