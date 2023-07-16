@@ -12,8 +12,8 @@ func main() {
 	//shellSortTest()
 	//mergeSortTest()
 	//prioQueTest()
-	//HeapTest()
-	BubbleTest()
+	HeapTest()
+	//BubbleTest()
 }
 
 func BubbleTest() {

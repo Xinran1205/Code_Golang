@@ -56,7 +56,7 @@ func sink(a *[]int) {
 // 堆排序算法
 func heapSort(a []int) {
 	n := len(a) - 1
-	for k := n / 2; k >= 1; k-- {
+	for k := n / 2; k > 0; k-- {
 		heapSink(a, k, n)
 	}
 	for n > 1 {
@@ -66,13 +66,13 @@ func heapSort(a []int) {
 	}
 }
 
-func heapSink(a []int, i int, n int) {
-	for 2*i <= n {
+func heapSink(a []int, i int, len int) {
+	for 2*i <= len {
 		p := 2 * i
-		if p < n && a[p] < a[p+1] {
+		if p < len && a[p] < a[p+1] {
 			p++
 		}
-		if a[i] > a[p] {
+		if a[p] <= a[i] {
 			break
 		}
 		exch(a, i, p)
