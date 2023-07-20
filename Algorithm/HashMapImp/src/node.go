@@ -1,8 +1,16 @@
 package main
 
 import (
+	"fmt"
+	"math/rand"
 	"strconv"
 )
+
+// 定义数组大小
+const ArraySize = 100
+
+// 一个大的质数
+const P = 115249
 
 type node struct {
 	key   interface{}
@@ -10,7 +18,7 @@ type node struct {
 	next  *node
 }
 
-type HashArray [10]*node
+type HashArray [ArraySize]*node
 
 func initHash() HashArray {
 	m := HashArray{}
@@ -48,9 +56,30 @@ func hashValue(key interface{}) int {
 	return (hash & 0x7fffffff) % 10
 }
 
-func (hashArray *HashArray) Put(key interface{}, value interface{}) {
-	index := hashValue(key)
+func UniversalHash(key interface{}) int {
+	m := ArraySize
+	p := P
+	switch k := key.(type) {
+	case int:
+		//随机从全域函数集合中选一个全域函数,这里我使用了a和b取随机数
+		//(同一个key对应的a和b是一样的）
+		rand.Seed(int64(k))
+		//a的取值为0到p-1
+		a := rand.Intn(p)
+		//b的取值为1到p-1
+		b := rand.Intn(p-1) + 1
+		h := ((a*k + b) % p) % m
+		return h
+	default:
+		// 其他类型的键暂不支持
+		return -1
+	}
+	return -1
+}
 
+func (hashArray *HashArray) Put(key interface{}, value interface{}) {
+	index := UniversalHash(key)
+	fmt.Println(index)
 	if hashArray[index] == nil {
 		hashArray[index] = &node{key, value, nil}
 	} else {
@@ -72,7 +101,7 @@ func (hashArray *HashArray) Put(key interface{}, value interface{}) {
 }
 
 func (hashArray *HashArray) Get(key interface{}) interface{} {
-	index := hashValue(key)
+	index := UniversalHash(key)
 	node := hashArray[index]
 	for node != nil {
 		if key == node.key {
@@ -84,7 +113,7 @@ func (hashArray *HashArray) Get(key interface{}) interface{} {
 }
 
 func (hashArray *HashArray) Delete(key interface{}) bool {
-	index := hashValue(key)
+	index := UniversalHash(key)
 	preNode := hashArray[index]
 	if preNode == nil {
 		return false
