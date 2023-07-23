@@ -3,18 +3,25 @@ package main
 import (
 	"fmt"
 	"math/rand"
+	"sync"
 )
 
 // 这里我们给一个我们最大key得值
-const Maxkey = 100000
+const RandomValue = 100000
 
 // 定义数组大小
 const ArraySize = 100
 
-// 一个大的质数
+// 一个大的质数，我在思考，这个P是不是要搞一个数组，这样rehash的时候就使用不同的P
 const P = 115249
 
-// 这个是为了每次交替踢出去
+// 最大递归次数
+const MaxDepth = 20
+
+// 负载因子 百分之75就扩容
+const MaxLoadFactor = 0.75
+
+// 这个是为了每次交替踢出去，这个是我随便想的，应该可以算出一个每次踢谁出去
 var IsCheckArrA bool
 
 type node struct {
@@ -26,28 +33,31 @@ type node struct {
 
 // 这个就是我们初始化的一个结构体，里面两个指针，分别指向两个数组
 type HashArray struct {
-	HashArrA *HashArrayA
-	HashArrB *HashArrayB
+	HashArrA []*node
+	HashArrB []*node
+	//来个锁
+	mutexLock sync.Mutex
+	//用来记录数组里面有多少个元素，防止死递归
+	size int
 }
-
-type HashArrayA [ArraySize]*node
-
-type HashArrayB [ArraySize]*node
 
 func InitHash() HashArray {
 	IsCheckArrA = true
 	m := HashArray{}
-	m.HashArrA = &HashArrayA{}
-	m.HashArrB = &HashArrayB{}
+	m.HashArrA = make([]*node, ArraySize)
+	m.HashArrB = make([]*node, ArraySize)
+	m.size = 0
 	return m
 }
 
-func UniversalHashA(key interface{}) int {
-	m := ArraySize
+// 这个随机种子设置很有讲究，我希望扩容（rehash）后，随机的a和b不一样，所以我可以把随机种子设置为加上容量
+// 这样随机种子会随着容量的变化而变化，同时在同意容量下，相同的key也可以生成相同的a和b即相同的hash值
+func UniversalHashA(key interface{}, arraySize int) int {
+	m := arraySize
 	p := P
 	switch k := key.(type) {
 	case int:
-		rand.Seed(int64(k))
+		rand.Seed(int64(k) + int64(m))
 		a := rand.Intn(p)
 		b := rand.Intn(p-1) + 1
 		h := ((a*k + b) % p) % m
@@ -59,13 +69,13 @@ func UniversalHashA(key interface{}) int {
 	return -1
 }
 
-// 这个B哈希的种子和A哈希需要不一样
-func UniversalHashB(key interface{}) int {
-	m := ArraySize
+// 这个B哈希的种子和A哈希需要不一样，所以我就把随机种子改掉了
+func UniversalHashB(key interface{}, arraySize int) int {
+	m := arraySize
 	p := P
 	switch k := key.(type) {
 	case int:
-		rand.Seed(int64(k) + Maxkey)
+		rand.Seed(int64(k) + int64(m) + RandomValue)
 		a := rand.Intn(p)
 		b := rand.Intn(p-1) + 1
 		h := ((a*k + b) % p) % m
@@ -77,18 +87,42 @@ func UniversalHashB(key interface{}) int {
 	return -1
 }
 
-// 我这个写的应该是有漏洞的
-// 首先我没有考虑到如果A数组和B数组都满了的情况
+// 这个是对外的接口，因为我不想让用户输入深度，这会让用户感觉很奇怪
 func (hashArray *HashArray) Put(key interface{}, value interface{}) {
-	IndexA := UniversalHashA(key)
-	fmt.Println("可以放在A数组", IndexA)
-	IndexB := UniversalHashB(key)
-	fmt.Println("可以放在B数组", IndexB)
+	hashArray.mutexLock.Lock()
+	hashArray.PutFunc(key, value, 0)
+	hashArray.mutexLock.Unlock()
+}
+
+func (hashArray *HashArray) PutFunc(key interface{}, value interface{}, depth int) error {
+	//cap代表容量，len代表长度
+	IndexA := UniversalHashA(key, cap(hashArray.HashArrA))
+	IndexB := UniversalHashB(key, cap(hashArray.HashArrB))
 	//这里判断条件要包含数组里面的值的key和我们要放的key一样（已经放进去的情况）
 	if hashArray.HashArrA[IndexA] == nil || hashArray.HashArrA[IndexA].key == key {
+		if hashArray.HashArrA[IndexA] == nil {
+			//这里要注意一下，如果是替换key，我们数组中的size是不变的
+			hashArray.size++
+		}
 		hashArray.HashArrA[IndexA] = &node{key, value, IndexA, IndexB}
+		return nil
 	} else if hashArray.HashArrB[IndexB] == nil || hashArray.HashArrB[IndexB].key == key {
+		if hashArray.HashArrA[IndexB] == nil {
+			hashArray.size++
+		}
 		hashArray.HashArrB[IndexB] = &node{key, value, IndexA, IndexB}
+		return nil
+	} else if hashArray.size > ArraySize*MaxLoadFactor {
+		//当数组大小大于75%的时候，我们就扩容
+		hashArray.Rehash()
+		fmt.Println("array is full,Rehash")
+		return nil
+	} else if depth > MaxDepth {
+		//这里我随便写的最大递归次数，20,这种情况就是数组没有满，但是出现了死递归的情况
+		//这种情况应该是rehash吧，我不是很确定
+		hashArray.Rehash()
+		fmt.Println("recursion limit exceeded,Rehash")
+		return nil
 	} else {
 		//如果A和B都不为空，我们就把他踢到对面
 		//这里要注意比如我们key等于10对应的A数组下标有人，B数组下标也有人。
@@ -107,13 +141,76 @@ func (hashArray *HashArray) Put(key interface{}, value interface{}) {
 			IsCheckArrA = true
 		}
 		//递归
-		hashArray.Put(NextKey, NextValue)
+		hashArray.PutFunc(NextKey, NextValue, depth+1)
 	}
+	return nil
+}
+
+func (hashArray *HashArray) Rehash() {
+	// 创建一个新的 HashArrayA 数组和 HashArrayB 数组
+	newHashArrA := make([]*node, ArraySize*2)
+	newHashArrB := make([]*node, ArraySize*2)
+	// 遍历 HashArrayA 和 HashArrayB 数组中的所有节点，并重新散列到新数组中
+	for _, n := range hashArray.HashArrA {
+		if n != nil {
+			hashArray.rehashNode(newHashArrA, newHashArrB, n, 0)
+		}
+	}
+	for _, n := range hashArray.HashArrB {
+		if n != nil {
+			hashArray.rehashNode(newHashArrA, newHashArrB, n, 0)
+		}
+	}
+	// 将新数组设置为哈希表的数组
+	//根据go语言垃圾回收特性，无需回收旧数组，旧数组会被自动回收
+	hashArray.HashArrA = newHashArrA
+	hashArray.HashArrB = newHashArrB
+	return
+}
+
+func (hashArray *HashArray) rehashNode(newHashArrA []*node, newHashArrB []*node, n *node, depth int) {
+	// 重新计算节点 n 的哈希值
+	IndexA := UniversalHashA(n.key, cap(newHashArrA))
+	IndexB := UniversalHashB(n.key, cap(newHashArrB))
+	//我们要把n里面的原来的hash下标更新
+	n.HashAIndex = IndexA
+	n.HashBIndex = IndexB
+	// 如果新数组中的节点为空，则直接将节点 n 放入新数组中
+	if newHashArrA[IndexA] == nil {
+		newHashArrA[IndexA] = n
+		return
+	} else if newHashArrB[IndexB] == nil {
+		newHashArrB[IndexB] = n
+		return
+	} else if depth > MaxDepth {
+		hashArray.Rehash()
+		return
+	} else {
+		// 这里这4个值是现在A里面的node的数据，要被踢出来的node的数据
+		NextKey := hashArray.HashArrA[IndexA].key
+		NextValue := hashArray.HashArrA[IndexA].value
+		NextArrAIndex := hashArray.HashArrA[IndexA].HashAIndex
+		NextArrBIndex := hashArray.HashArrA[IndexA].HashBIndex
+		if IsCheckArrA {
+			hashArray.HashArrA[IndexA] = n
+			IsCheckArrA = false
+		} else {
+			NextKey = hashArray.HashArrB[IndexB].key
+			NextValue = hashArray.HashArrB[IndexB].value
+			NextArrAIndex = hashArray.HashArrB[IndexB].HashAIndex
+			NextArrBIndex = hashArray.HashArrB[IndexB].HashBIndex
+			hashArray.HashArrB[IndexB] = n
+			IsCheckArrA = true
+		}
+		//递归
+		hashArray.rehashNode(newHashArrA, newHashArrB, &node{NextKey, NextValue, NextArrAIndex, NextArrBIndex}, depth+1)
+	}
+	return
 }
 
 func (hashArray *HashArray) Get(key interface{}) interface{} {
-	IndexA := UniversalHashA(key)
-	IndexB := UniversalHashB(key)
+	IndexA := UniversalHashA(key, cap(hashArray.HashArrA))
+	IndexB := UniversalHashB(key, cap(hashArray.HashArrB))
 	if hashArray.HashArrA[IndexA] != nil && hashArray.HashArrA[IndexA].key == key {
 		return hashArray.HashArrA[IndexA].value
 	}
@@ -125,16 +222,22 @@ func (hashArray *HashArray) Get(key interface{}) interface{} {
 }
 
 func (hashArray *HashArray) Delete(key interface{}) bool {
-	IndexA := UniversalHashA(key)
-	IndexB := UniversalHashB(key)
+	hashArray.mutexLock.Lock()
+	IndexA := UniversalHashA(key, cap(hashArray.HashArrA))
+	IndexB := UniversalHashB(key, cap(hashArray.HashArrB))
 	if hashArray.HashArrA[IndexA] != nil && hashArray.HashArrA[IndexA].key == key {
 		hashArray.HashArrA[IndexA] = nil
+		hashArray.size--
+		hashArray.mutexLock.Unlock()
 		return true
 	}
 	if hashArray.HashArrB[IndexB] != nil && hashArray.HashArrB[IndexB].key == key {
 		hashArray.HashArrB[IndexB] = nil
+		hashArray.size--
+		hashArray.mutexLock.Unlock()
 		return true
 	}
 	fmt.Println("cannot delete Not found key:", key)
+	hashArray.mutexLock.Unlock()
 	return false
 }
