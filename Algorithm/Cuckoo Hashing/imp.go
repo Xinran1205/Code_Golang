@@ -1,5 +1,8 @@
 package main
 
+//https://zhuanlan.zhihu.com/p/462813998
+//这里提到了改良的方法，增加巢穴，3，4个巢穴
+
 import (
 	"fmt"
 	"math/rand"
@@ -119,7 +122,7 @@ func (hashArray *HashArray) PutFunc(key interface{}, value interface{}, depth in
 		return nil
 	} else if depth > MaxDepth {
 		//这里我随便写的最大递归次数，20,这种情况就是数组没有满，但是出现了死递归的情况
-		//这种情况应该是rehash吧，我不是很确定
+		//这种情况rehash，可以不扩容，我觉得也可以扩容
 		hashArray.Rehash()
 		fmt.Println("recursion limit exceeded,Rehash")
 		return nil
