@@ -4,6 +4,7 @@ This is a repository for storing my daily coding practice. I use this repository
 
 - zh_CN [简体中文](/README.zh_CN.md)
 
+<<<<<<< HEAD
 # Algorithm
 
 * [Binary_Search/](.\Algorithm\Binary_Search)
@@ -26,3 +27,4 @@ This is a repository for storing my daily coding practice. I use this repository
 * [MutiThread/](.\linuxC\MutiThread)
 * [SocketProgramming/](.\linuxC\SocketProgramming)
 * [ThreadPool/](.\linuxC\ThreadPool)
+
