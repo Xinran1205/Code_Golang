@@ -5,6 +5,7 @@ This is a repository for storing my daily coding practice. I use this repository
 - zh_CN [简体中文](/README.zh_CN.md)
 
 
+```html
 <div class="directory">
   <ul>
     <li><span class="toggle">+</span> Algorithm
