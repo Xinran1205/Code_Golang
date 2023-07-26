@@ -12,8 +12,8 @@ import (
 // 这里我们给一个我们最大key得值
 const RandomValue = 100000
 
-// 定义数组大小
-const ArraySize = 100
+// 定义数组大小，这里注意一下，这个是一个数组的大小，我们有两个数组，所以实际上我们的容量是两倍
+const ArraySize = 10
 
 // 一个大的质数，我在思考，这个P是不是要搞一个数组，这样rehash的时候就使用不同的P
 const P = 115249
@@ -22,7 +22,7 @@ const P = 115249
 const MaxDepth = 20
 
 // 负载因子 百分之75就扩容
-const MaxLoadFactor = 0.75
+const MaxLoadFactor float64 = 0.75
 
 // 这个是为了每次交替踢出去，这个是我随便想的，应该可以算出一个每次踢谁出去
 var IsCheckArrA bool
@@ -41,7 +41,7 @@ type HashArray struct {
 	//来个锁
 	mutexLock sync.Mutex
 	//用来记录数组里面有多少个元素，防止死递归
-	size int
+	numElements int
 }
 
 func InitHash() HashArray {
@@ -49,7 +49,7 @@ func InitHash() HashArray {
 	m := HashArray{}
 	m.HashArrA = make([]*node, ArraySize)
 	m.HashArrB = make([]*node, ArraySize)
-	m.size = 0
+	m.numElements = 0
 	return m
 }
 
@@ -98,32 +98,36 @@ func (hashArray *HashArray) Put(key interface{}, value interface{}) {
 }
 
 func (hashArray *HashArray) PutFunc(key interface{}, value interface{}, depth int) error {
-	//cap代表容量，len代表长度
+	//cap代表容量，len代表长度,这里是相等的
 	IndexA := UniversalHashA(key, cap(hashArray.HashArrA))
 	IndexB := UniversalHashB(key, cap(hashArray.HashArrB))
 	//这里判断条件要包含数组里面的值的key和我们要放的key一样（已经放进去的情况）
 	if hashArray.HashArrA[IndexA] == nil || hashArray.HashArrA[IndexA].key == key {
 		if hashArray.HashArrA[IndexA] == nil {
 			//这里要注意一下，如果是替换key，我们数组中的size是不变的
-			hashArray.size++
+			hashArray.numElements++
 		}
 		hashArray.HashArrA[IndexA] = &node{key, value, IndexA, IndexB}
 		return nil
 	} else if hashArray.HashArrB[IndexB] == nil || hashArray.HashArrB[IndexB].key == key {
-		if hashArray.HashArrA[IndexB] == nil {
-			hashArray.size++
+		if hashArray.HashArrB[IndexB] == nil {
+			hashArray.numElements++
 		}
 		hashArray.HashArrB[IndexB] = &node{key, value, IndexA, IndexB}
 		return nil
-	} else if hashArray.size > ArraySize*MaxLoadFactor {
+	} else if float64(hashArray.numElements) > float64(2*cap(hashArray.HashArrA))*MaxLoadFactor {
+		//有一个非常要注意的，当我们插入某个数，他要rehash时，这个数是没有被放进去的
+		//这里我们不能直接用2*ArraySize，因为我每次扩容完，他都是新的大小了
+		//我们在这里写扩容，可能数组已经快满了，但是因为他一直有地方可以放，我们就让他放
+		//实际上我们只有当没地方放并且数组大小大于75%的时候，我们才扩容
 		//当数组大小大于75%的时候，我们就扩容
-		hashArray.Rehash()
+		hashArray.Rehash(&node{key, value, IndexA, IndexB})
 		fmt.Println("array is full,Rehash")
 		return nil
 	} else if depth > MaxDepth {
 		//这里我随便写的最大递归次数，20,这种情况就是数组没有满，但是出现了死递归的情况
 		//这种情况rehash，可以不扩容，我觉得也可以扩容
-		hashArray.Rehash()
+		hashArray.Rehash(&node{key, value, IndexA, IndexB})
 		fmt.Println("recursion limit exceeded,Rehash")
 		return nil
 	} else {
@@ -149,10 +153,14 @@ func (hashArray *HashArray) PutFunc(key interface{}, value interface{}, depth in
 	return nil
 }
 
-func (hashArray *HashArray) Rehash() {
+func (hashArray *HashArray) Rehash(curNode *node) {
 	// 创建一个新的 HashArrayA 数组和 HashArrayB 数组
 	newHashArrA := make([]*node, ArraySize*2)
 	newHashArrB := make([]*node, ArraySize*2)
+
+	//当我们要rehash时，当前要插入的元素也要放进去
+	hashArray.rehashNode(newHashArrA, newHashArrB, curNode, 0)
+
 	// 遍历 HashArrayA 和 HashArrayB 数组中的所有节点，并重新散列到新数组中
 	for _, n := range hashArray.HashArrA {
 		if n != nil {
@@ -186,7 +194,8 @@ func (hashArray *HashArray) rehashNode(newHashArrA []*node, newHashArrB []*node,
 		newHashArrB[IndexB] = n
 		return
 	} else if depth > MaxDepth {
-		hashArray.Rehash()
+		//扩容,这个情况其实可以注释掉，因为需要两次的扩容的情况几乎不可能
+		hashArray.Rehash(n)
 		return
 	} else {
 		// 这里这4个值是现在A里面的node的数据，要被踢出来的node的数据
@@ -230,13 +239,13 @@ func (hashArray *HashArray) Delete(key interface{}) bool {
 	IndexB := UniversalHashB(key, cap(hashArray.HashArrB))
 	if hashArray.HashArrA[IndexA] != nil && hashArray.HashArrA[IndexA].key == key {
 		hashArray.HashArrA[IndexA] = nil
-		hashArray.size--
+		hashArray.numElements--
 		hashArray.mutexLock.Unlock()
 		return true
 	}
 	if hashArray.HashArrB[IndexB] != nil && hashArray.HashArrB[IndexB].key == key {
 		hashArray.HashArrB[IndexB] = nil
-		hashArray.size--
+		hashArray.numElements--
 		hashArray.mutexLock.Unlock()
 		return true
 	}
