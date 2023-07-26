@@ -12,20 +12,22 @@ import (
 // 这里我们给一个我们最大key得值
 const RandomValue = 100000
 
-// 定义数组大小，这里注意一下，这个是一个数组的大小，我们有两个数组，所以实际上我们的容量是两倍
+// 定义初始数组大小，这里注意一下，这个是一个数组的大小，我们有两个数组，所以实际上我们的容量是两倍
 const ArraySize = 10
 
 // 一个大的质数，我在思考，这个P是不是要搞一个数组，这样rehash的时候就使用不同的P
 const P = 115249
 
 // 最大递归次数
-const MaxDepth = 20
+const MaxDepth = 5
 
 // 负载因子 百分之75就扩容
 const MaxLoadFactor float64 = 0.75
 
 // 这个是为了每次交替踢出去，这个是我随便想的，应该可以算出一个每次踢谁出去
 var IsCheckArrA bool
+
+var IsCheckArr bool
 
 type node struct {
 	key        interface{}
@@ -46,6 +48,7 @@ type HashArray struct {
 
 func InitHash() HashArray {
 	IsCheckArrA = true
+	IsCheckArr = true
 	m := HashArray{}
 	m.HashArrA = make([]*node, ArraySize)
 	m.HashArrB = make([]*node, ArraySize)
@@ -122,12 +125,14 @@ func (hashArray *HashArray) PutFunc(key interface{}, value interface{}, depth in
 		//实际上我们只有当没地方放并且数组大小大于75%的时候，我们才扩容
 		//当数组大小大于75%的时候，我们就扩容
 		hashArray.Rehash(&node{key, value, IndexA, IndexB})
+		hashArray.numElements++
 		fmt.Println("array is full,Rehash")
 		return nil
 	} else if depth > MaxDepth {
 		//这里我随便写的最大递归次数，20,这种情况就是数组没有满，但是出现了死递归的情况
 		//这种情况rehash，可以不扩容，我觉得也可以扩容
 		hashArray.Rehash(&node{key, value, IndexA, IndexB})
+		hashArray.numElements++
 		fmt.Println("recursion limit exceeded,Rehash")
 		return nil
 	} else {
@@ -155,21 +160,21 @@ func (hashArray *HashArray) PutFunc(key interface{}, value interface{}, depth in
 
 func (hashArray *HashArray) Rehash(curNode *node) {
 	// 创建一个新的 HashArrayA 数组和 HashArrayB 数组
-	newHashArrA := make([]*node, ArraySize*2)
-	newHashArrB := make([]*node, ArraySize*2)
+	newHashArrA := make([]*node, cap(hashArray.HashArrA)*2)
+	newHashArrB := make([]*node, cap(hashArray.HashArrB)*2)
 
 	//当我们要rehash时，当前要插入的元素也要放进去
-	hashArray.rehashNode(newHashArrA, newHashArrB, curNode, 0)
+	hashArray.rehashNode(newHashArrA, newHashArrB, curNode)
 
 	// 遍历 HashArrayA 和 HashArrayB 数组中的所有节点，并重新散列到新数组中
 	for _, n := range hashArray.HashArrA {
 		if n != nil {
-			hashArray.rehashNode(newHashArrA, newHashArrB, n, 0)
+			hashArray.rehashNode(newHashArrA, newHashArrB, n)
 		}
 	}
 	for _, n := range hashArray.HashArrB {
 		if n != nil {
-			hashArray.rehashNode(newHashArrA, newHashArrB, n, 0)
+			hashArray.rehashNode(newHashArrA, newHashArrB, n)
 		}
 	}
 	// 将新数组设置为哈希表的数组
@@ -179,7 +184,7 @@ func (hashArray *HashArray) Rehash(curNode *node) {
 	return
 }
 
-func (hashArray *HashArray) rehashNode(newHashArrA []*node, newHashArrB []*node, n *node, depth int) {
+func (hashArray *HashArray) rehashNode(newHashArrA []*node, newHashArrB []*node, n *node) {
 	// 重新计算节点 n 的哈希值
 	IndexA := UniversalHashA(n.key, cap(newHashArrA))
 	IndexB := UniversalHashB(n.key, cap(newHashArrB))
@@ -193,43 +198,68 @@ func (hashArray *HashArray) rehashNode(newHashArrA []*node, newHashArrB []*node,
 	} else if newHashArrB[IndexB] == nil {
 		newHashArrB[IndexB] = n
 		return
+	} else {
+		// 这里这4个值是现在A里面的node的数据，要被踢出来的node的数据
+		NextKey := newHashArrA[IndexA].key
+		NextValue := newHashArrA[IndexA].value
+		NextArrAIndex := newHashArrA[IndexA].HashAIndex
+		NextArrBIndex := newHashArrA[IndexA].HashBIndex
+		newHashArrA[IndexA] = n
+		//递归
+		hashArray.FindTheNextPosition(newHashArrA, newHashArrB, &node{NextKey, NextValue, NextArrAIndex, NextArrBIndex}, 0)
+		return
+	}
+}
+
+// 这个函数是rehashNode里面的递归函数
+func (hashArray *HashArray) FindTheNextPosition(newHashArrA []*node, newHashArrB []*node, n *node, depth int) {
+	if newHashArrA[n.HashAIndex] == nil {
+		newHashArrA[n.HashAIndex] = n
+		return
+	} else if newHashArrB[n.HashBIndex] == nil {
+		newHashArrB[n.HashBIndex] = n
+		return
 	} else if depth > MaxDepth {
 		//扩容,这个情况其实可以注释掉，因为需要两次的扩容的情况几乎不可能
 		hashArray.Rehash(n)
 		return
 	} else {
 		// 这里这4个值是现在A里面的node的数据，要被踢出来的node的数据
-		NextKey := hashArray.HashArrA[IndexA].key
-		NextValue := hashArray.HashArrA[IndexA].value
-		NextArrAIndex := hashArray.HashArrA[IndexA].HashAIndex
-		NextArrBIndex := hashArray.HashArrA[IndexA].HashBIndex
-		if IsCheckArrA {
-			hashArray.HashArrA[IndexA] = n
-			IsCheckArrA = false
+		NextKey := newHashArrA[n.HashAIndex].key
+		NextValue := newHashArrA[n.HashAIndex].value
+		NextArrAIndex := newHashArrA[n.HashAIndex].HashAIndex
+		NextArrBIndex := newHashArrA[n.HashAIndex].HashBIndex
+		if IsCheckArr {
+			newHashArrA[n.HashAIndex] = n
+			IsCheckArr = false
 		} else {
-			NextKey = hashArray.HashArrB[IndexB].key
-			NextValue = hashArray.HashArrB[IndexB].value
-			NextArrAIndex = hashArray.HashArrB[IndexB].HashAIndex
-			NextArrBIndex = hashArray.HashArrB[IndexB].HashBIndex
-			hashArray.HashArrB[IndexB] = n
-			IsCheckArrA = true
+			NextKey = newHashArrB[n.HashBIndex].key
+			NextValue = newHashArrB[n.HashBIndex].value
+			NextArrAIndex = newHashArrB[n.HashBIndex].HashAIndex
+			NextArrBIndex = newHashArrB[n.HashBIndex].HashBIndex
+			newHashArrB[n.HashBIndex] = n
+			IsCheckArr = true
 		}
 		//递归
-		hashArray.rehashNode(newHashArrA, newHashArrB, &node{NextKey, NextValue, NextArrAIndex, NextArrBIndex}, depth+1)
+		hashArray.FindTheNextPosition(newHashArrA, newHashArrB, &node{NextKey, NextValue, NextArrAIndex, NextArrBIndex}, depth+1)
+		return
 	}
-	return
 }
 
 func (hashArray *HashArray) Get(key interface{}) interface{} {
+	hashArray.mutexLock.Lock()
 	IndexA := UniversalHashA(key, cap(hashArray.HashArrA))
 	IndexB := UniversalHashB(key, cap(hashArray.HashArrB))
 	if hashArray.HashArrA[IndexA] != nil && hashArray.HashArrA[IndexA].key == key {
+		hashArray.mutexLock.Unlock()
 		return hashArray.HashArrA[IndexA].value
 	}
 	if hashArray.HashArrB[IndexB] != nil && hashArray.HashArrB[IndexB].key == key {
+		hashArray.mutexLock.Unlock()
 		return hashArray.HashArrB[IndexB].value
 	}
 	fmt.Println("cannot get Not found key:", key)
+	hashArray.mutexLock.Unlock()
 	return nil
 }
 
