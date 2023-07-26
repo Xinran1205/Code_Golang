@@ -7,24 +7,25 @@ This is a repository for storing my daily coding practice. I use this repository
 
 # Algorithm
 
-* [Binary_Search/](.\Algorithm\Binary_Search)
-* [BloomFilter/](.\Algorithm\BloomFilter)
-* [Cuckoo_Hashing/](.\Algorithm\Cuckoo_Hashing)
-* [HashMapImp/](.\Algorithm\HashMapImp)
-* [sort_algo/](.\Algorithm\sort_algo)
-* [union_and_kruskal/](.\Algorithm\union_and_kruskal)
+
+* [Binary_Search/](Algorithm/Binary_Search)
+* [BloomFilter/](Algorithm/BloomFilter)
+* [Cuckoo_Hashing/](Algorithm/Cuckoo_Hashing)
+* [HashMapImp/](Algorithm/HashMapImp)
+* [sort_algo/](Algorithm/sort_algo)
+* [union_and_kruskal/](Algorithm/union_and_kruskal)
 
 # Golang
 
-* [GoGrammar/](.\Golang\GoGrammar)
-* [InstantMessagingSystem/](.\Golang\InstantMessagingSystem)
-* [ReflectionJAVA/](.\Golang\ReflectionJAVA)
-* [ZINX/](.\Golang\ZINX)
+* [GoGrammar/](Golang/GoGrammar)
+* [InstantMessagingSystem/](Golang/InstantMessagingSystem)
+* [ReflectionJAVA/](Golang/ReflectionJAVA)
+* [ZINX/](Golang/ZINX)
 
 # linuxC
 
-* [IOmutiplexing/](.\linuxC\IOmutiplexing)
-* [MutiThread/](.\linuxC\MutiThread)
-* [SocketProgramming/](.\linuxC\SocketProgramming)
-* [ThreadPool/](.\linuxC\ThreadPool)
+* [IOmutiplexing/](linuxC/IOmutiplexing)
+* [MutiThread/](linuxC/MutiThread)
+* [SocketProgramming/](linuxC/SocketProgramming)
+* [ThreadPool/](linuxC/ThreadPool)
 
