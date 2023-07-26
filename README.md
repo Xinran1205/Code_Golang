@@ -4,15 +4,15 @@ This is a repository for storing my daily coding practice. I use this repository
 
 - zh_CN [简体中文](/README.zh_CN.md)
 
-<<<<<<< HEAD
+
 # Algorithm
 
 * [Binary_Search/](.\Algorithm\Binary_Search)
 * [BloomFilter/](.\Algorithm\BloomFilter)
-* [Cuckoo Hashing/](.\Algorithm\Cuckoo Hashing)
+* [Cuckoo_Hashing/](.\Algorithm\Cuckoo_Hashing)
 * [HashMapImp/](.\Algorithm\HashMapImp)
 * [sort_algo/](.\Algorithm\sort_algo)
-* [union and kruskal/](.\Algorithm\union and kruskal)
+* [union_and_kruskal/](.\Algorithm\union_and_kruskal)
 
 # Golang
 
