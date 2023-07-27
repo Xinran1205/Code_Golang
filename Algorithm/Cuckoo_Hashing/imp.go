@@ -19,7 +19,7 @@ const ArraySize = 10
 const P = 115249
 
 // 最大递归次数
-const MaxDepth = 5
+const MaxDepth = 40
 
 // 负载因子 百分之75就扩容
 const MaxLoadFactor float64 = 0.75
@@ -93,31 +93,28 @@ func UniversalHashB(key interface{}, arraySize int) int {
 	return -1
 }
 
-// 这个是对外的接口，因为我不想让用户输入深度，这会让用户感觉很奇怪
 func (hashArray *HashArray) Put(key interface{}, value interface{}) {
 	hashArray.mutexLock.Lock()
-	hashArray.PutFunc(key, value, 0)
-	hashArray.mutexLock.Unlock()
-}
-
-func (hashArray *HashArray) PutFunc(key interface{}, value interface{}, depth int) error {
 	//cap代表容量，len代表长度,这里是相等的
 	IndexA := UniversalHashA(key, cap(hashArray.HashArrA))
 	IndexB := UniversalHashB(key, cap(hashArray.HashArrB))
-	//这里判断条件要包含数组里面的值的key和我们要放的key一样（已经放进去的情况）
-	if hashArray.HashArrA[IndexA] == nil || hashArray.HashArrA[IndexA].key == key {
+	//这里判断条件要包含数组里面的值的key和我们要放的key一样(已经放进去的情况)
+	//这里我发现最好先判断B再判断A，这样可以使两个数组里面的值平均一点
+	if hashArray.HashArrB[IndexB] == nil || hashArray.HashArrB[IndexB].key == key {
+		if hashArray.HashArrB[IndexB] == nil {
+			hashArray.numElements++
+		}
+		hashArray.HashArrB[IndexB] = &node{key, value, IndexA, IndexB}
+		hashArray.mutexLock.Unlock()
+		return
+	} else if hashArray.HashArrA[IndexA] == nil || hashArray.HashArrA[IndexA].key == key {
 		if hashArray.HashArrA[IndexA] == nil {
 			//这里要注意一下，如果是替换key，我们数组中的size是不变的
 			hashArray.numElements++
 		}
 		hashArray.HashArrA[IndexA] = &node{key, value, IndexA, IndexB}
-		return nil
-	} else if hashArray.HashArrB[IndexB] == nil || hashArray.HashArrB[IndexB].key == key {
-		if hashArray.HashArrB[IndexB] == nil {
-			hashArray.numElements++
-		}
-		hashArray.HashArrB[IndexB] = &node{key, value, IndexA, IndexB}
-		return nil
+		hashArray.mutexLock.Unlock()
+		return
 	} else if float64(hashArray.numElements) > float64(2*cap(hashArray.HashArrA))*MaxLoadFactor {
 		//有一个非常要注意的，当我们插入某个数，他要rehash时，这个数是没有被放进去的
 		//这里我们不能直接用2*ArraySize，因为我每次扩容完，他都是新的大小了
@@ -127,41 +124,72 @@ func (hashArray *HashArray) PutFunc(key interface{}, value interface{}, depth in
 		hashArray.Rehash(&node{key, value, IndexA, IndexB})
 		hashArray.numElements++
 		fmt.Println("array is full,Rehash")
-		return nil
-	} else if depth > MaxDepth {
-		//这里我随便写的最大递归次数，20,这种情况就是数组没有满，但是出现了死递归的情况
-		//这种情况rehash，可以不扩容，我觉得也可以扩容
-		hashArray.Rehash(&node{key, value, IndexA, IndexB})
-		hashArray.numElements++
-		fmt.Println("recursion limit exceeded,Rehash")
-		return nil
+		hashArray.mutexLock.Unlock()
+		return
 	} else {
 		//如果A和B都不为空，我们就把他踢到对面
 		//这里要注意比如我们key等于10对应的A数组下标有人，B数组下标也有人。
-		//我们就把A数组下标的人踢走，A数组下标的人比如说是30，他对应的A数组是现在这里，
+		//第一次踢我们默认把A数组下标的人踢走，A数组下标的人比如说是30，他对应的A数组是现在这里，
 		//但是他对应的B数组下标和我们的10是不一样的，因为哈希A和哈希B函数是不一样的，
 		//两个不同的key两个不同哈希全部一样的概率是非常小的
 		NextKey := hashArray.HashArrA[IndexA].key
 		NextValue := hashArray.HashArrA[IndexA].value
+		NextArrAIndex := hashArray.HashArrA[IndexA].HashAIndex
+		NextArrBIndex := hashArray.HashArrA[IndexA].HashBIndex
+		//把当前节点插入A数组中
+		hashArray.HashArrA[IndexA] = &node{key, value, IndexA, IndexB}
+
+		//递归,默认把A数组的元素踢走
+		hashArray.PutRecursive(&node{NextKey, NextValue, NextArrAIndex, NextArrBIndex}, 0)
+		hashArray.mutexLock.Unlock()
+	}
+	return
+}
+
+// 这个是当前元素被提出来的情况
+func (hashArray *HashArray) PutRecursive(curNode *node, depth int) {
+	if hashArray.HashArrB[curNode.HashBIndex] == nil {
+		hashArray.HashArrB[curNode.HashBIndex] = curNode
+		hashArray.numElements++
+		return
+	} else if hashArray.HashArrA[curNode.HashAIndex] == nil {
+		hashArray.HashArrA[curNode.HashAIndex] = curNode
+		hashArray.numElements++
+		return
+	} else if depth > MaxDepth {
+		//这里我随便写的最大递归次数，20,这种情况就是数组没有满，但是出现了死递归的情况
+		//这种情况rehash，可以不扩容，我觉得也可以扩容
+		hashArray.Rehash(curNode)
+		hashArray.numElements++
+		fmt.Println("recursion limit exceeded,Rehash")
+		return
+	} else {
+		//因为我们前面先踢的A，这个时候要从B开始踢
+		NextKey := hashArray.HashArrB[curNode.HashBIndex].key
+		NextValue := hashArray.HashArrB[curNode.HashBIndex].value
+		NextArrAIndex := hashArray.HashArrB[curNode.HashBIndex].HashAIndex
+		NextArrBIndex := hashArray.HashArrB[curNode.HashBIndex].HashBIndex
 		if IsCheckArrA {
-			hashArray.HashArrA[IndexA] = &node{key, value, IndexA, IndexB}
+			hashArray.HashArrB[curNode.HashBIndex] = curNode
 			IsCheckArrA = false
 		} else {
-			NextKey = hashArray.HashArrB[IndexB].key
-			NextValue = hashArray.HashArrB[IndexB].value
-			hashArray.HashArrB[IndexB] = &node{key, value, IndexA, IndexB}
+			NextKey = hashArray.HashArrA[curNode.HashAIndex].key
+			NextValue = hashArray.HashArrA[curNode.HashAIndex].value
+			NextArrAIndex = hashArray.HashArrA[curNode.HashAIndex].HashAIndex
+			NextArrBIndex = hashArray.HashArrA[curNode.HashAIndex].HashBIndex
+			hashArray.HashArrA[curNode.HashAIndex] = curNode
 			IsCheckArrA = true
 		}
 		//递归
-		hashArray.PutFunc(NextKey, NextValue, depth+1)
+		hashArray.PutRecursive(&node{NextKey, NextValue, NextArrAIndex, NextArrBIndex}, depth+1)
+		return
 	}
-	return nil
 }
 
 func (hashArray *HashArray) Rehash(curNode *node) {
 	// 创建一个新的 HashArrayA 数组和 HashArrayB 数组
-	newHashArrA := make([]*node, cap(hashArray.HashArrA)*2)
-	newHashArrB := make([]*node, cap(hashArray.HashArrB)*2)
+	newHashArrA := make([]*node, cap(hashArray.HashArrA)*4)
+	newHashArrB := make([]*node, cap(hashArray.HashArrA)*4)
 
 	//当我们要rehash时，当前要插入的元素也要放进去
 	hashArray.rehashNode(newHashArrA, newHashArrB, curNode)
@@ -206,13 +234,13 @@ func (hashArray *HashArray) rehashNode(newHashArrA []*node, newHashArrB []*node,
 		NextArrBIndex := newHashArrA[IndexA].HashBIndex
 		newHashArrA[IndexA] = n
 		//递归
-		hashArray.FindTheNextPosition(newHashArrA, newHashArrB, &node{NextKey, NextValue, NextArrAIndex, NextArrBIndex}, 0)
+		hashArray.RecursiveFindPosition(newHashArrA, newHashArrB, &node{NextKey, NextValue, NextArrAIndex, NextArrBIndex}, 0)
 		return
 	}
 }
 
 // 这个函数是rehashNode里面的递归函数
-func (hashArray *HashArray) FindTheNextPosition(newHashArrA []*node, newHashArrB []*node, n *node, depth int) {
+func (hashArray *HashArray) RecursiveFindPosition(newHashArrA []*node, newHashArrB []*node, n *node, depth int) {
 	if newHashArrA[n.HashAIndex] == nil {
 		newHashArrA[n.HashAIndex] = n
 		return
@@ -220,15 +248,15 @@ func (hashArray *HashArray) FindTheNextPosition(newHashArrA []*node, newHashArrB
 		newHashArrB[n.HashBIndex] = n
 		return
 	} else if depth > MaxDepth {
-		//扩容,这个情况其实可以注释掉，因为需要两次的扩容的情况几乎不可能
-		hashArray.Rehash(n)
+		//这里暂时没想到解决办法
+		fmt.Println("error rehash fail, lose one element")
 		return
 	} else {
-		// 这里这4个值是现在A里面的node的数据，要被踢出来的node的数据
 		NextKey := newHashArrA[n.HashAIndex].key
 		NextValue := newHashArrA[n.HashAIndex].value
 		NextArrAIndex := newHashArrA[n.HashAIndex].HashAIndex
 		NextArrBIndex := newHashArrA[n.HashAIndex].HashBIndex
+		//这里取否，因为上面我们第一个主动踢的A，所以我们现在踢B
 		if IsCheckArr {
 			newHashArrA[n.HashAIndex] = n
 			IsCheckArr = false
@@ -241,7 +269,7 @@ func (hashArray *HashArray) FindTheNextPosition(newHashArrA []*node, newHashArrB
 			IsCheckArr = true
 		}
 		//递归
-		hashArray.FindTheNextPosition(newHashArrA, newHashArrB, &node{NextKey, NextValue, NextArrAIndex, NextArrBIndex}, depth+1)
+		hashArray.RecursiveFindPosition(newHashArrA, newHashArrB, &node{NextKey, NextValue, NextArrAIndex, NextArrBIndex}, depth+1)
 		return
 	}
 }
@@ -282,4 +310,14 @@ func (hashArray *HashArray) Delete(key interface{}) bool {
 	fmt.Println("cannot delete Not found key:", key)
 	hashArray.mutexLock.Unlock()
 	return false
+}
+
+func size(arr []*node) int {
+	num := 0
+	for q := 0; q < cap(arr); q++ {
+		if arr[q] != nil {
+			num++
+		}
+	}
+	return num
 }
