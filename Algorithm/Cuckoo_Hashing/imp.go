@@ -249,7 +249,8 @@ func (hashArray *HashArray) RecursiveFindPosition(newHashArrA []*node, newHashAr
 		return
 	} else if depth > MaxDepth {
 		//这里暂时没想到解决办法
-		fmt.Println("error rehash fail, lose one element")
+		hashArray.numElements--
+		fmt.Println("error rehash fail, node", n, "should be put again")
 		return
 	} else {
 		NextKey := newHashArrA[n.HashAIndex].key
