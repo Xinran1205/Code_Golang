@@ -1,3 +1,11 @@
+##这个文件是传统的makefile,你看到的目录中另一个makefile是通过cmake生成的
+##这个文件想要使用,得把原先的makefile删掉,然后把这个名字改一下
+##makefile不好跨平台，因为路径什么的都是linux，windows下就跑不了，所以引出cmake
+##CMake可以生成不同平台下的Makefile
+
+##cmake的使用是要编写CMakeLists.txt这个文件,然后当我们执行cmake .后,就会生成一堆文件,同时其中有makefile,这个时候我们再make
+##然后有一个非常好的技巧,因为cmake会生成一堆文件,我们的办法就是创建一个新目录,比如叫build,进到build里面,然后cmake ..这样就很清爽了
+
 ##version1
 ##第一种makefile的写法
 # hello:practice1.cpp add.cpp
