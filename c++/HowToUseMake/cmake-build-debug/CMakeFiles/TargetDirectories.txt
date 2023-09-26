@@ -1,3 +1,0 @@
-F:/Code_Golang/c++/HowToUseMake/cmake-build-debug/CMakeFiles/HelloWorld.dir
-F:/Code_Golang/c++/HowToUseMake/cmake-build-debug/CMakeFiles/edit_cache.dir
-F:/Code_Golang/c++/HowToUseMake/cmake-build-debug/CMakeFiles/rebuild_cache.dir
