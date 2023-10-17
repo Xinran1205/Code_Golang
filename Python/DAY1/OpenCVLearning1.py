@@ -50,4 +50,4 @@ def pixel_demo():
 # 下面的代码只有在直接运行这个文件时才会被执行，如果是被其他文件import的话，这段代码不会被执行
 # __name__ 是一个内置的全局变量，它表示当前模块的名字
 if __name__ == '__main__':
-    pixel_demo()
+    colour_space()
