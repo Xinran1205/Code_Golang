@@ -1,0 +1,14 @@
+F:\CodingEveryday\c#coding\GrammarLearning\bin\Debug\net6.0\GrammarLearning.exe
+F:\CodingEveryday\c#coding\GrammarLearning\bin\Debug\net6.0\GrammarLearning.deps.json
+F:\CodingEveryday\c#coding\GrammarLearning\bin\Debug\net6.0\GrammarLearning.runtimeconfig.json
+F:\CodingEveryday\c#coding\GrammarLearning\bin\Debug\net6.0\GrammarLearning.dll
+F:\CodingEveryday\c#coding\GrammarLearning\bin\Debug\net6.0\GrammarLearning.pdb
+F:\CodingEveryday\c#coding\GrammarLearning\obj\Debug\net6.0\GrammarLearning.GeneratedMSBuildEditorConfig.editorconfig
+F:\CodingEveryday\c#coding\GrammarLearning\obj\Debug\net6.0\GrammarLearning.AssemblyInfoInputs.cache
+F:\CodingEveryday\c#coding\GrammarLearning\obj\Debug\net6.0\GrammarLearning.AssemblyInfo.cs
+F:\CodingEveryday\c#coding\GrammarLearning\obj\Debug\net6.0\GrammarLearning.csproj.CoreCompileInputs.cache
+F:\CodingEveryday\c#coding\GrammarLearning\obj\Debug\net6.0\GrammarLearning.dll
+F:\CodingEveryday\c#coding\GrammarLearning\obj\Debug\net6.0\refint\GrammarLearning.dll
+F:\CodingEveryday\c#coding\GrammarLearning\obj\Debug\net6.0\GrammarLearning.pdb
+F:\CodingEveryday\c#coding\GrammarLearning\obj\Debug\net6.0\GrammarLearning.genruntimeconfig.cache
+F:\CodingEveryday\c#coding\GrammarLearning\obj\Debug\net6.0\ref\GrammarLearning.dll
