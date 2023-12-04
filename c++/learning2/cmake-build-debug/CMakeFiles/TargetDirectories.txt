@@ -1,3 +1,3 @@
-F:/Code_Golang/c++/learning2/cmake-build-debug/CMakeFiles/learning2.dir
-F:/Code_Golang/c++/learning2/cmake-build-debug/CMakeFiles/edit_cache.dir
-F:/Code_Golang/c++/learning2/cmake-build-debug/CMakeFiles/rebuild_cache.dir
+F:/CodingEveryday/c++/learning2/cmake-build-debug/CMakeFiles/learning2.dir
+F:/CodingEveryday/c++/learning2/cmake-build-debug/CMakeFiles/edit_cache.dir
+F:/CodingEveryday/c++/learning2/cmake-build-debug/CMakeFiles/rebuild_cache.dir

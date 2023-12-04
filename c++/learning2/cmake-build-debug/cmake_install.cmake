@@ -1,4 +1,4 @@
-# Install script for directory: F:/Code_Golang/c++/learning2
+# Install script for directory: F:/CodingEveryday/c++/learning2
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -45,5 +45,5 @@ endif()
 
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
-file(WRITE "F:/Code_Golang/c++/learning2/cmake-build-debug/${CMAKE_INSTALL_MANIFEST}"
+file(WRITE "F:/CodingEveryday/c++/learning2/cmake-build-debug/${CMAKE_INSTALL_MANIFEST}"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")

@@ -7,7 +7,7 @@ class Program
     {
         Library library = new Library();
 
-        // 事件订阅
+        // 事件订阅，这里只是订阅，当广播事件时，会触发OnBookAdded方法
         library.BookAdded += OnBookAdded;
 
         book newBook = new book("C# Programming", "John Doe", 320);

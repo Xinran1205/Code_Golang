@@ -7,6 +7,7 @@ namespace GrammarLearning
     {
         private List<book> books;
 
+        // 事件委托
         public delegate void BookAddedEventHandler(book item);
 
         // 事件声明
@@ -24,6 +25,7 @@ namespace GrammarLearning
             books.Add(newBook);
             Console.WriteLine($"Book '{newBook.Title}' by {newBook.Author} added to the library.");
 
+            // 这里相当于广播事件
             BookAdded?.Invoke(newBook);
         }
 
