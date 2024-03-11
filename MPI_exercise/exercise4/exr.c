@@ -45,6 +45,7 @@ int main(int argc, char** argv) {
     int left_neighbor = rank - 1;
     int right_neighbor = rank + 1;
     // 向左邻居发送和接收
+    // 这里当0号进程时，left_neighbor=-1，所以不会发送和接收，直接到下一步，可以防止deadlock
     if (left_neighbor >= 0) {
         MPI_Sendrecv(&local_data[1], 1, MPI_INT, left_neighbor, 0,
                      &local_data[0], 1, MPI_INT, left_neighbor, 0,
@@ -65,6 +66,8 @@ int main(int argc, char** argv) {
     // 收集更新后的数据
     if (rank == 0) {
         int *final_result = (int*)malloc(N * sizeof(int));
+        // MPI_Gather函数从所有进程（包括根进程自己）收集数据。每个进程发送其result数组中的local_n个整数，
+        // 这些数据被收集并按进程排名的顺序存储在根进程的final_result数组中。
         MPI_Gather(result, local_n, MPI_INT, final_result, local_n, MPI_INT, 0, MPI_COMM_WORLD);
         // 打印最终结果
         printf("Final result:\n");
@@ -74,6 +77,8 @@ int main(int argc, char** argv) {
         printf("\n");
         free(final_result);
     } else {
+        //非根进程也调用MPI_Gather函数，但它们在收集操作中不接收数据，
+        //因此接收缓冲区参数设置为NULL。这些进程只负责发送自己的result数组中的数据。
         MPI_Gather(result, local_n, MPI_INT, NULL, local_n, MPI_INT, 0, MPI_COMM_WORLD);
     }
 
