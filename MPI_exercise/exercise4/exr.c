@@ -38,8 +38,14 @@ int main(int argc, char** argv) {
     }
 
     // 设置数组两端的边界条件
-    local_data[0] = (rank == 0) ? 0 : local_data[1]; // 最左边的进程将左边界设置为0
-    local_data[local_n + 1] = (rank == size - 1) ? 0 : local_data[local_n]; // 最右边的进程将右边界设置为0
+    if (rank == 0) {
+        local_data[0] = 0;
+    }
+    if (rank == size - 1) {
+        local_data[local_n + 1] = 0;
+    }
+//    local_data[0] = (rank == 0) ? 0 : local_data[1]; // 最左边的进程将左边界设置为0
+//    local_data[local_n + 1] = (rank == size - 1) ? 0 : local_data[local_n]; // 最右边的进程将右边界设置为0
 
     // 进行Halo exchange
     int left_neighbor = rank - 1;
@@ -48,13 +54,13 @@ int main(int argc, char** argv) {
     // 这里当0号进程时，left_neighbor=-1，所以不会发送和接收，直接到下一步，可以防止deadlock
     if (left_neighbor >= 0) {
         MPI_Sendrecv(&local_data[1], 1, MPI_INT, left_neighbor, 0,
-                     &local_data[0], 1, MPI_INT, left_neighbor, 0,
+                     &local_data[local_n + 1], 1, MPI_INT, right_neighbor, 0,
                      MPI_COMM_WORLD, MPI_STATUS_IGNORE);
     }
     // 向右邻居发送和接收
     if (right_neighbor < size) {
         MPI_Sendrecv(&local_data[local_n], 1, MPI_INT, right_neighbor, 0,
-                     &local_data[local_n + 1], 1, MPI_INT, right_neighbor, 0,
+                     &local_data[0], 1, MPI_INT, left_neighbor, 0,
                      MPI_COMM_WORLD, MPI_STATUS_IGNORE);
     }
 
